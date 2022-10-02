@@ -214,6 +214,20 @@ NS_ASSUME_NONNULL_BEGIN
     NSURLSession *session = [self.sessionSelector URLSessionForRequest:request];
     NSURLRequest *urlRequest = request.urlRequest;
 
+    if ([request isKindOfClass:[SPTDataLoaderUploadRequest class]]) {
+        SPTDataLoaderUploadRequest *uploadRequest = (SPTDataLoaderUploadRequest *)request;
+
+        if (uploadRequest.body != nil) {
+            return [session uploadTaskWithRequest:urlRequest fromData:(NSData *)uploadRequest.body];
+        }
+
+        if (uploadRequest.fileURL != nil) {
+            return [session uploadTaskWithRequest:urlRequest fromFile:(NSURL *)uploadRequest.fileURL];
+        }
+
+        return [session uploadTaskWithStreamedRequest:urlRequest];
+    }
+
     if (request.backgroundPolicy == SPTDataLoaderRequestBackgroundPolicyAlways) {
         return [session downloadTaskWithRequest:urlRequest];
     }
@@ -368,6 +382,8 @@ didBecomeDownloadTask:(NSURLSessionDownloadTask *)downloadTask
     completionHandler(handler.request.skipNSURLCache ? nil : proposedResponse);
 }
 
+#pragma mark NSURLSessionTaskDelegate
+
 - (void)URLSession:(NSURLSession *)session
               task:(NSURLSessionTask *)task
 didReceiveChallenge:(NSURLAuthenticationChallenge *)challenge
@@ -399,8 +415,6 @@ didReceiveChallenge:(NSURLAuthenticationChallenge *)challenge
 
     completionHandler(disposition, credential);
 }
-
-#pragma mark NSURLSessionTaskDelegate
 
 - (void)URLSession:(NSURLSession *)session
               task:(NSURLSessionTask *)task
@@ -512,6 +526,21 @@ willPerformHTTPRedirection:(NSHTTPURLResponse *)response
     [handler noteWaitingForConnectivity];
 }
 
+- (void)URLSession:(NSURLSession *)session
+              task:(NSURLSessionTask *)task
+   didSendBodyData:(int64_t)bytesSent
+    totalBytesSent:(int64_t)totalBytesSent
+totalBytesExpectedToSend:(int64_t)totalBytesExpectedToSend
+{
+    SPTDataLoaderRequestTaskHandler *handler = [self handlerForTask:task];
+    if (handler.request.progressHandler != nil) {
+        NSProgress * const progress = [[NSProgress alloc] init];
+        progress.completedUnitCount = totalBytesSent;
+        progress.totalUnitCount = totalBytesExpectedToSend;
+        handler.request.progressHandler(progress);
+    }
+}
+
 #pragma mark NSURLSessionDownloadDelegate
 
 - (void)URLSession:(NSURLSession *)session
@@ -554,6 +583,21 @@ didFinishDownloadingToURL:(NSURL *)location
         }];
     } else {
         [self URLSession:session task:downloadTask didCompleteWithError:fileError];
+    }
+}
+
+- (void)URLSession:(NSURLSession *)session
+      downloadTask:(NSURLSessionDownloadTask *)downloadTask
+      didWriteData:(int64_t)bytesWritten
+ totalBytesWritten:(int64_t)totalBytesWritten
+totalBytesExpectedToWrite:(int64_t)totalBytesExpectedToWrite
+{
+    SPTDataLoaderRequestTaskHandler *handler = [self handlerForTask:downloadTask];
+    if (handler.request.progressHandler != nil) {
+        NSProgress * const progress = [[NSProgress alloc] init];
+        progress.completedUnitCount = totalBytesWritten;
+        progress.totalUnitCount = totalBytesExpectedToWrite;
+        handler.request.progressHandler(progress);
     }
 }
 

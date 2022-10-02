@@ -23,16 +23,9 @@ final class DataLoaderWrapper: NSObject {
     init(dataLoader: SPTDataLoader) {
         self.dataLoader = dataLoader
     }
-}
 
-// MARK: - DataLoader
-
-extension DataLoaderWrapper: DataLoader {
-    var activeRequests: [Request] { accessLock.sync { Array(requests.values) } }
-
-    func request(_ url: URL, sourceIdentifier: String?) -> Request {
-        let sptRequest = SPTDataLoaderRequest(url: url, sourceIdentifier: sourceIdentifier)
-        let request = Request(request: sptRequest) { [weak self] request in
+    private func makeRequest(from sptRequest: SPTDataLoaderRequest) -> Request {
+        return Request(request: sptRequest) { [weak self] request in
             guard let self = self else {
                 return nil
             }
@@ -43,8 +36,33 @@ extension DataLoaderWrapper: DataLoader {
 
             return self.dataLoader.perform(sptRequest)
         }
+    }
+}
 
-        return request
+// MARK: - DataLoader
+
+extension DataLoaderWrapper: DataLoader {
+    var activeRequests: [Request] { accessLock.sync { Array(requests.values) } }
+
+    func request(_ url: URL, sourceIdentifier: String?) -> Request {
+        let sptRequest = SPTDataLoaderRequest(url: url, sourceIdentifier: sourceIdentifier)
+
+        return makeRequest(from: sptRequest)
+    }
+
+    func uploadRequest(_ url: URL, dataSource: UploadDataSource, sourceIdentifier: String?) -> Request {
+        let sptRequest = SPTDataLoaderUploadRequest(url: url, sourceIdentifier: sourceIdentifier)
+
+        switch dataSource {
+        case .data(let data):
+            sptRequest.body = data
+        case .file(let fileURL):
+            sptRequest.fileURL = fileURL
+        case .stream(let inputStream):
+            sptRequest.bodyStream = inputStream
+        }
+
+        return makeRequest(from: sptRequest)
     }
 
     func cancelActiveRequests() {

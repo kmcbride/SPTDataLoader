@@ -25,6 +25,13 @@ public protocol DataLoader {
     /// - Returns: A new `Request` instance.
     func request(_ url: URL, sourceIdentifier: String?) -> Request
 
+    /// Creates a `Request` that can be used to upload contents to a URL.
+    /// - Parameter url: The `URL` for the request.
+    /// - Parameter dataSource: The source of the data to be transferred.
+    /// - Parameter sourceIdentifier: The identifier for the request source. May be `nil`.
+    /// - Returns: A new `Request` instance.
+    func uploadRequest(_ url: URL, dataSource: UploadDataSource, sourceIdentifier: String?) -> Request
+
     /// Cancels all requests that have been executed and are awaiting a response.
     func cancelActiveRequests()
 }
@@ -42,4 +49,11 @@ public extension SPTDataLoaderFactory {
 
         return dataLoaderWrapper
     }
+}
+
+/// A type representing a source of upload data.
+public enum UploadDataSource {
+    case data(Data)
+    case file(URL)
+    case stream(InputStream)
 }

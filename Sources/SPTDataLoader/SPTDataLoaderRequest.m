@@ -36,8 +36,6 @@ static NSString * NSStringFromSPTDataLoaderRequestMethod(SPTDataLoaderRequestMet
 
 @implementation SPTDataLoaderRequest
 
-#pragma mark SPTDataLoaderRequest
-
 + (instancetype)requestWithURL:(NSURL *)URL sourceIdentifier:(nullable NSString *)sourceIdentifier
 {
     static int64_t uniqueIdentifierBarrier = 0;
@@ -208,6 +206,20 @@ static NSString * NSStringFromSPTDataLoaderRequestMethod(SPTDataLoaderRequestMet
     copy.cancellationToken = self.cancellationToken;
     copy.bodyStream = self.bodyStream;
     copy.shouldStopRedirection = self.shouldStopRedirection;
+    copy.progressHandler = self.progressHandler;
+
+    return copy;
+}
+
+@end
+
+@implementation SPTDataLoaderUploadRequest
+
+- (id)copyWithZone:(nullable NSZone *)zone
+{
+    __typeof(self) copy = [super copyWithZone:zone];
+    copy.fileURL = self.fileURL;
+
     return copy;
 }
 

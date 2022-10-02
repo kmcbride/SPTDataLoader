@@ -47,6 +47,8 @@ typedef NS_ENUM(NSInteger, SPTDataLoaderRequestBackgroundPolicy) {
     SPTDataLoaderRequestBackgroundPolicyAlways
 };
 
+typedef void (^SPTDataLoaderRequestProgressHandler)(NSProgress *progress);
+
 /**
  A representing of the request to make to the backend
  */
@@ -116,6 +118,10 @@ typedef NS_ENUM(NSInteger, SPTDataLoaderRequestBackgroundPolicy) {
  */
 @property (nonatomic, strong, readwrite) NSInputStream *bodyStream;
 /**
+ A callback block that receives updates as the task progresses.
+ */
+@property (nonatomic, nullable) SPTDataLoaderRequestProgressHandler progressHandler;
+/**
  An identifier for the request source. May be nil.
 
  @discussion This is used for logging purposes to locate where data is downloaded from.
@@ -150,6 +156,23 @@ typedef NS_ENUM(NSInteger, SPTDataLoaderRequestBackgroundPolicy) {
  @param header The header field to remove
  */
 - (void)removeHeader:(NSString *)header;
+
+@end
+
+/**
+ A request that can be used to upload data.
+
+ @discussion The data to be uploaded is selected from the first non-nil property, in the following order:
+   1) @c body
+   2) @c fileURL
+   3) @c bodyStream
+ */
+@interface SPTDataLoaderUploadRequest : SPTDataLoaderRequest
+
+/**
+ The URL of the file used to provide upload data.
+ */
+@property (nonatomic, nullable) NSURL *fileURL;
 
 @end
 
